@@ -1,141 +1,235 @@
 .page {
-  --background: #fafafa;
-  --foreground: #fff;
-
-  --text-primary: #000;
-  --text-secondary: #666;
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
-  display: flex;
+  background: linear-gradient(180deg, #f7fbff 0%, #fdfdfd 60%);
   min-height: 100vh;
-  align-items: center;
+  padding: 32px 16px 64px;
+  display: flex;
   justify-content: center;
-  font-family: var(--font-geist-sans);
-  background-color: var(--background);
+  color: #1f2933;
 }
 
 .main {
-  display: flex;
-  min-height: 100vh;
   width: 100%;
-  max-width: 800px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  background-color: var(--foreground);
-  padding: 120px 60px;
-}
-
-.intro {
+  max-width: 960px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  gap: 24px;
+  gap: 32px;
 }
 
-.intro h1 {
-  max-width: 320px;
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
-  text-wrap: balance;
-  color: var(--text-primary);
-}
-
-.intro p {
-  max-width: 440px;
-  font-size: 18px;
-  line-height: 32px;
-  text-wrap: balance;
-  color: var(--text-secondary);
-}
-
-.intro a {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.ctas {
+.hero {
+  background: #fff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.06);
   display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: 440px;
+  flex-direction: column;
   gap: 16px;
+}
+
+.badge {
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.hero h1 {
+  font-size: clamp(28px, 5vw, 40px);
+  margin: 0;
+}
+
+.hero p {
+  line-height: 1.7;
+  color: #475569;
+}
+
+.statusCard {
+  background: #0ea5e9;
+  border-radius: 20px;
+  padding: 20px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statusLabel {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.statusValue {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.statusDetail {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.section {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: 14px;
+  color: #667085;
+}
+
+.userGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.userCard {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.userCard:hover {
+  border-color: #0ea5e9;
+}
+
+.activeCard {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+  background: #fff;
+}
+
+.userBadge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.userName {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.userNotes {
+  font-size: 13px;
+  color: #475569;
+}
+
+.slotList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.slotButton {
+  border: 1px solid #cbd5f5;
+  background: #eef2ff;
+  color: #1e1b4b;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slotButton:hover {
+  border-color: #6366f1;
+}
+
+.activeSlot {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+}
+
+.medList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+.medRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  flex-wrap: wrap;
+}
+
+.medName {
+  font-weight: 600;
+}
+
+.medName span {
+  font-size: 14px;
+  color: #475569;
+}
+
+.medDesc {
+  font-size: 14px;
+  color: #475569;
+  margin-top: 6px;
+}
+
+.medLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.emptyState {
+  color: #94a3b8;
   font-size: 14px;
 }
 
-.ctas a {
+.todoList {
+  padding-left: 20px;
+  color: #1f2933;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
+  flex-direction: column;
+  gap: 6px;
 }
 
-a.primary {
-  background: var(--text-primary);
-  color: var(--background);
-  gap: 8px;
+.todoList li {
+  line-height: 1.6;
 }
 
-a.secondary {
-  border-color: var(--button-secondary-border);
-}
-
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
+@media (max-width: 640px) {
+  .section,
+  .hero {
+    padding: 20px;
   }
 
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
-}
-
-@media (max-width: 600px) {
-  .main {
-    padding: 48px 24px;
-  }
-
-  .intro {
-    gap: 16px;
-  }
-
-  .intro h1 {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-
-  .page {
-    --background: #000;
-    --foreground: #000;
-
-    --text-primary: #ededed;
-    --text-secondary: #999;
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
+  .slotList {
+    flex-direction: column;
   }
 }
