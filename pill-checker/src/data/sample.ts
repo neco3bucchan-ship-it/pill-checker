@@ -23,7 +23,7 @@ export type UserProfile = {
 
 export const timeSlots: TimeSlot[] = ["朝", "昼", "夜", "就寝前", "毎食後"];
 
-export const medications: Medication[] = [
+const medicationsSeed: Medication[] = [
   {
     id: "med-c",
     name: "ビタミンC錠500mg",
@@ -54,7 +54,7 @@ export const medications: Medication[] = [
   },
 ];
 
-export const userProfiles: UserProfile[] = [
+const userProfilesSeed: UserProfile[] = [
   {
     id: "user-ana",
     name: "あんな",
@@ -92,6 +92,18 @@ export const userProfiles: UserProfile[] = [
   },
 ];
 
-export const getMedicationById = (id: string) =>
-  medications.find((med) => med.id === id);
+export type AppData = {
+  medications: Medication[];
+  userProfiles: UserProfile[];
+};
+
+export const initialData: AppData = {
+  medications: medicationsSeed,
+  userProfiles: userProfilesSeed,
+};
+
+export const getMedicationById = (id: string, list?: Medication[]) => {
+  const source = list ?? initialData.medications;
+  return source.find((med) => med.id === id);
+};
 
