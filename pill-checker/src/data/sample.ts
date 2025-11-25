@@ -6,6 +6,8 @@ export type Medication = {
   description: string;
   surfaceLabel: string; // 表面写真の説明
   backLabel: string; // 裏面写真の説明
+  surfaceImage?: string; // 表面画像のBase64データURL
+  backImage?: string; // 裏面画像のBase64データURL
 };
 
 export type ScheduleItem = {
@@ -92,14 +94,27 @@ const userProfilesSeed: UserProfile[] = [
   },
 ];
 
+export type AnalysisHistory = {
+  id: string;
+  userId: string;
+  userName: string;
+  slot: TimeSlot;
+  timestamp: string;
+  missing: Array<{ name: string; expected: number; actual: number }>;
+  extra: Array<{ name: string; expected: number; actual: number }>;
+  unknown: Array<{ name: string; count: number }>;
+};
+
 export type AppData = {
   medications: Medication[];
   userProfiles: UserProfile[];
+  analysisHistory: AnalysisHistory[];
 };
 
 export const initialData: AppData = {
   medications: medicationsSeed,
   userProfiles: userProfilesSeed,
+  analysisHistory: [],
 };
 
 export const getMedicationById = (id: string, list?: Medication[]) => {

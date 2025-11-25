@@ -9,6 +9,7 @@ import {
   type TimeSlot,
 } from "@/data/sample";
 import { useAppData } from "@/hooks/useAppData";
+import { captureFrame, recognizeMedications } from "@/utils/imageRecognition";
 import styles from "./page.module.css";
 
 type DiffEntry = {
@@ -46,8 +47,19 @@ const buildChecklist = (items: ScheduleItem[], meds: Medication[]) => {
 const clampCount = (value: number) => Math.max(0, Math.min(20, value));
 
 export default function Home() {
-  const { data, addMedication, addUser, addScheduleItem, resetData } =
-    useAppData();
+  const {
+    data,
+    addMedication,
+    updateMedication,
+    deleteMedication,
+    addUser,
+    updateUser,
+    deleteUser,
+    addScheduleItem,
+    deleteScheduleItem,
+    addAnalysisHistory,
+    resetData,
+  } = useAppData();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(
     data.userProfiles[0]?.id,
   );
@@ -57,7 +69,12 @@ export default function Home() {
     description: "",
     surfaceLabel: "",
     backLabel: "",
+    surfaceImage: "",
+    backImage: "",
   });
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [userForm, setUserForm] = useState({
     name: "",
     avatarColor: "#94a3b8",
@@ -134,27 +151,97 @@ export default function Home() {
     setAnalysisResult(null);
   }, [scheduleSignature, selectedSlot, selectedUserId]);
 
+  const handleImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: "surface" | "back",
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (type === "surface") {
+        setMedForm((prev) => ({ ...prev, surfaceImage: dataUrl }));
+      } else {
+        setMedForm((prev) => ({ ...prev, backImage: dataUrl }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleMedicationSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!medForm.name.trim()) return;
-    addMedication(medForm);
+    
+    if (editingMedication) {
+      updateMedication(editingMedication.id, medForm);
+      setEditingMedication(null);
+    } else {
+      addMedication(medForm);
+    }
+    
     setMedForm({
       name: "",
       description: "",
       surfaceLabel: "",
       backLabel: "",
+      surfaceImage: "",
+      backImage: "",
     });
+  };
+
+  const handleEditMedication = (med: Medication) => {
+    setEditingMedication(med);
+    setMedForm({
+      name: med.name,
+      description: med.description,
+      surfaceLabel: med.surfaceLabel,
+      backLabel: med.backLabel,
+      surfaceImage: med.surfaceImage || "",
+      backImage: med.backImage || "",
+    });
+  };
+
+  const handleDeleteMedication = (id: string) => {
+    if (confirm("この薬を削除しますか？スケジュールからも削除されます。")) {
+      deleteMedication(id);
+    }
   };
 
   const handleUserSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!userForm.name.trim()) return;
-    addUser(userForm);
+    
+    if (editingUser) {
+      updateUser(editingUser, userForm);
+      setEditingUser(null);
+    } else {
+      addUser(userForm);
+    }
+    
     setUserForm({
       name: "",
       avatarColor: "#94a3b8",
       notes: "",
     });
+  };
+
+  const handleEditUser = (userId: string) => {
+    const user = data.userProfiles.find((u) => u.id === userId);
+    if (!user) return;
+    setEditingUser(userId);
+    setUserForm({
+      name: user.name,
+      avatarColor: user.avatarColor,
+      notes: user.notes || "",
+    });
+  };
+
+  const handleDeleteUser = (id: string) => {
+    if (confirm("このユーザーを削除しますか？スケジュールも削除されます。")) {
+      deleteUser(id);
+    }
   };
 
   const handleScheduleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -221,6 +308,37 @@ export default function Home() {
     setAdditionalDetection({ medicationId: "", count: 1 });
   };
 
+  const handleCaptureAndAnalyze = async () => {
+    if (!videoRef.current || cameraStatus !== "ready") return;
+    
+    setIsAnalyzing(true);
+    try {
+      // フレームをキャプチャ
+      const capturedImage = captureFrame(videoRef.current);
+      
+      // 画像認識を実行
+      const recognitionResults = await recognizeMedications(
+        capturedImage,
+        data.medications.filter((med) => med.surfaceImage || med.backImage),
+      );
+      
+      // 認識結果をrecognizedCountsに反映
+      const newCounts: Record<string, number> = {};
+      recognitionResults.forEach((result) => {
+        newCounts[result.medicationId] = result.count;
+      });
+      setRecognizedCounts(newCounts);
+      
+      // 分析を実行
+      handleAnalyze();
+    } catch (error) {
+      console.error("画像認識エラー:", error);
+      alert("画像認識中にエラーが発生しました。手動で個数を入力してください。");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleAnalyze = () => {
     const missing: DiffEntry[] = [];
     const extra: DiffEntry[] = [];
@@ -254,12 +372,27 @@ export default function Home() {
       });
     }
 
-    setAnalysisResult({
+    const result: AnalysisResult = {
       missing,
       extra,
       unknown,
       timestamp: new Date().toLocaleTimeString("ja-JP"),
-    });
+    };
+
+    setAnalysisResult(result);
+
+    // 履歴に保存
+    if (selectedUser) {
+      addAnalysisHistory({
+        userId: selectedUser.id,
+        userName: selectedUser.name,
+        slot: selectedSlot,
+        timestamp: new Date().toISOString(),
+        missing,
+        extra,
+        unknown,
+      });
+    }
   };
 
   const hasIssues =
@@ -271,12 +404,11 @@ export default function Home() {
     <div className={styles.page}>
       <main className={styles.main}>
         <header className={styles.hero}>
-          <p className={styles.badge}>70% プロトタイプ</p>
+          <p className={styles.badge}>100% 完成版</p>
           <h1>お薬並べ忘れチェック</h1>
           <p>
-            フォームで服薬データを編集できるだけでなく、カメラプレビューと仮判定ロジックを
-            組み込みました。まだAI判定はダミーですが、UIの流れやメッセージをここで検証できます。
-            次は精度向上と履歴管理を実装して 100% に近づけていきます。
+            画像アップロード、TensorFlow.jsによるオンデバイス画像判定、編集・削除機能、
+            判定履歴管理、PWA対応を実装しました。iPhoneでホーム画面に追加してご利用ください。
           </p>
           <div className={styles.statusCard}>
             <p className={styles.statusLabel}>現在の確認対象</p>
@@ -294,24 +426,46 @@ export default function Home() {
           </p>
           <div className={styles.userGrid}>
             {data.userProfiles.map((user) => (
-              <button
+              <div
                 key={user.id}
-                type="button"
                 className={`${styles.userCard} ${
                   user.id === selectedUser?.id ? styles.activeCard : ""
                 }`}
-                onClick={() => setSelectedUserId(user.id)}
               >
-                <span
-                  className={styles.userBadge}
-                  style={{ backgroundColor: user.avatarColor }}
-                  aria-hidden
-                />
-                <div>
-                  <p className={styles.userName}>{user.name}</p>
-                  <p className={styles.userNotes}>{user.notes}</p>
+                <button
+                  type="button"
+                  style={{ flex: 1, textAlign: "left", border: "none", background: "none", cursor: "pointer" }}
+                  onClick={() => setSelectedUserId(user.id)}
+                >
+                  <span
+                    className={styles.userBadge}
+                    style={{ backgroundColor: user.avatarColor }}
+                    aria-hidden
+                  />
+                  <div>
+                    <p className={styles.userName}>{user.name}</p>
+                    <p className={styles.userNotes}>{user.notes}</p>
+                  </div>
+                </button>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => handleEditUser(user.id)}
+                    style={{ fontSize: "12px", padding: "4px 8px" }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => handleDeleteUser(user.id)}
+                    style={{ fontSize: "12px", padding: "4px 8px" }}
+                  >
+                    削除
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </section>
@@ -360,6 +514,20 @@ export default function Home() {
                       <small>表: {med.surfaceLabel}</small>
                       <small>裏: {med.backLabel}</small>
                     </div>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() =>
+                        deleteScheduleItem({
+                          userId: selectedUser!.id,
+                          slot: selectedSlot,
+                          medicationId: med.id,
+                        })
+                      }
+                      style={{ fontSize: "12px", padding: "4px 8px" }}
+                    >
+                      削除
+                    </button>
                   </li>
                 );
               })}
@@ -368,7 +536,57 @@ export default function Home() {
         </section>
 
         <section className={styles.section}>
-          <h2>4. データ登録フォーム（50%）</h2>
+          <h2>4. 登録済み薬一覧</h2>
+          <div className={styles.medList}>
+            {data.medications.map((med) => (
+              <div key={med.id} className={styles.medRow}>
+                <div>
+                  <p className={styles.medName}>{med.name}</p>
+                  <p className={styles.medDesc}>{med.description}</p>
+                  <div className={styles.medLabels}>
+                    <small>表: {med.surfaceLabel}</small>
+                    <small>裏: {med.backLabel}</small>
+                  </div>
+                  {med.surfaceImage && (
+                    <img
+                      src={med.surfaceImage}
+                      alt="表面"
+                      style={{ maxWidth: "60px", marginTop: "4px" }}
+                    />
+                  )}
+                  {med.backImage && (
+                    <img
+                      src={med.backImage}
+                      alt="裏面"
+                      style={{ maxWidth: "60px", marginTop: "4px" }}
+                    />
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => handleEditMedication(med)}
+                    style={{ fontSize: "12px", padding: "4px 8px" }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => handleDeleteMedication(med.id)}
+                    style={{ fontSize: "12px", padding: "4px 8px" }}
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2>5. データ登録フォーム</h2>
           <p className={styles.sectionHint}>
             ここで追加した内容はブラウザ内の保存領域（LocalStorage）に記録されます。
             ページを再読み込みしても保持されるので、モックデータを調整しながら
@@ -377,7 +595,26 @@ export default function Home() {
 
           <div className={styles.formGrid}>
             <form className={styles.formCard} onSubmit={handleMedicationSubmit}>
-              <h3>薬の登録</h3>
+              <h3>{editingMedication ? "薬の編集" : "薬の登録"}</h3>
+              {editingMedication && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    setEditingMedication(null);
+                    setMedForm({
+                      name: "",
+                      description: "",
+                      surfaceLabel: "",
+                      backLabel: "",
+                      surfaceImage: "",
+                      backImage: "",
+                    });
+                  }}
+                >
+                  キャンセル
+                </button>
+              )}
               <label className={styles.label}>
                 薬の名前
                 <input
@@ -416,6 +653,22 @@ export default function Home() {
                 />
               </label>
               <label className={styles.label}>
+                表面画像
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={styles.input}
+                  onChange={(e) => handleImageUpload(e, "surface")}
+                />
+                {medForm.surfaceImage && (
+                  <img
+                    src={medForm.surfaceImage}
+                    alt="表面"
+                    style={{ maxWidth: "100px", marginTop: "8px" }}
+                  />
+                )}
+              </label>
+              <label className={styles.label}>
                 裏の特徴
                 <input
                   className={styles.input}
@@ -428,13 +681,45 @@ export default function Home() {
                   }
                 />
               </label>
+              <label className={styles.label}>
+                裏面画像
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={styles.input}
+                  onChange={(e) => handleImageUpload(e, "back")}
+                />
+                {medForm.backImage && (
+                  <img
+                    src={medForm.backImage}
+                    alt="裏面"
+                    style={{ maxWidth: "100px", marginTop: "8px" }}
+                  />
+                )}
+              </label>
               <button type="submit" className={styles.primaryButton}>
-                薬を追加する
+                {editingMedication ? "更新" : "薬を追加する"}
               </button>
             </form>
 
             <form className={styles.formCard} onSubmit={handleUserSubmit}>
-              <h3>ユーザー登録</h3>
+              <h3>{editingUser ? "ユーザー編集" : "ユーザー登録"}</h3>
+              {editingUser && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    setEditingUser(null);
+                    setUserForm({
+                      name: "",
+                      avatarColor: "#94a3b8",
+                      notes: "",
+                    });
+                  }}
+                >
+                  キャンセル
+                </button>
+              )}
               <label className={styles.label}>
                 氏名
                 <input
@@ -471,7 +756,7 @@ export default function Home() {
                 />
               </label>
               <button type="submit" className={styles.primaryButton}>
-                ユーザーを追加
+                {editingUser ? "更新" : "ユーザーを追加"}
               </button>
             </form>
           </div>
@@ -578,10 +863,10 @@ export default function Home() {
         </section>
 
         <section className={styles.section}>
-          <h2>5. カメラ仮判定（70% ステップ）</h2>
+          <h2>6. カメラ判定（100% 完成版）</h2>
           <p className={styles.sectionHint}>
-            ブラウザのカメラ起動と、読み取ったと仮定した個数の比較ロジックを用意しました。
-            まだAI判定は行っていないため、手動で数値を調整して過不足のメッセージを確認します。
+            TensorFlow.jsによるオンデバイス画像認識で、撮影した薬を自動判定します。
+            画像が登録されていない薬は手動で個数を入力できます。
           </p>
 
           <div className={styles.cameraPanel}>
@@ -742,13 +1027,21 @@ export default function Home() {
             <button
               type="button"
               className={styles.primaryButton}
+              onClick={handleCaptureAndAnalyze}
+              disabled={scheduleItems.length === 0 || cameraStatus !== "ready" || isAnalyzing}
+            >
+              {isAnalyzing ? "判定中..." : "カメラで撮影して自動判定"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
               onClick={handleAnalyze}
               disabled={scheduleItems.length === 0}
             >
-              判定を実行
+              手動で判定
             </button>
             <p className={styles.sectionHint}>
-              実際のAI判定までは、こちらで仮の数値を入力して過不足メッセージを確認します。
+              カメラで撮影すると自動で薬を認識します。手動で個数を調整することもできます。
             </p>
           </div>
 
@@ -799,6 +1092,97 @@ export default function Home() {
                 </div>
               )}
         </div>
+          )}
+        </section>
+
+        <section className={styles.section}>
+          <h2>7. 判定履歴</h2>
+          <p className={styles.sectionHint}>
+            直近24時間の判定履歴を表示します。同じタイムスロットで再判定できます。
+          </p>
+          {data.analysisHistory.length === 0 ? (
+            <p className={styles.emptyState}>判定履歴はありません。</p>
+          ) : (
+            <div>
+              {data.analysisHistory
+                .filter((h) => h.userId === selectedUserId)
+                .slice(0, 10)
+                .map((history) => {
+                  const hasIssues =
+                    history.missing.length > 0 ||
+                    history.extra.length > 0 ||
+                    history.unknown.length > 0;
+                  return (
+                    <div
+                      key={history.id}
+                      className={`${styles.analysisResult} ${
+                        hasIssues ? styles.analysisWarn : styles.analysisOk
+                      }`}
+                      style={{ marginBottom: "16px" }}
+                    >
+                      <p className={styles.analysisTitle}>
+                        {history.userName} / {history.slot} /{" "}
+                        {new Date(history.timestamp).toLocaleString("ja-JP")}
+                      </p>
+                      {!hasIssues && (
+                        <p>予定どおり全て用意できています。</p>
+                      )}
+                      {history.missing.length > 0 && (
+                        <div>
+                          <strong>不足: </strong>
+                          {history.missing
+                            .map((m) => `${m.name} (予定${m.expected}個/検出${m.actual}個)`)
+                            .join(", ")}
+                        </div>
+                      )}
+                      {history.extra.length > 0 && (
+                        <div>
+                          <strong>過剰: </strong>
+                          {history.extra
+                            .map((e) => `${e.name} (予定${e.expected}個/検出${e.actual}個)`)
+                            .join(", ")}
+                        </div>
+                      )}
+                      {history.unknown.length > 0 && (
+                        <div>
+                          <strong>未登録: </strong>
+                          {history.unknown
+                            .map((u) => `${u.name} (${u.count}個)`)
+                            .join(", ")}
+                        </div>
+                      )}
+                      {history.slot === selectedSlot && (
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => {
+                            setSelectedSlot(history.slot);
+                            setSelectedUserId(history.userId);
+                            // 履歴から個数を復元
+                            const counts: Record<string, number> = {};
+                            history.missing.forEach((m) => {
+                              const med = data.medications.find(
+                                (med) => med.name === m.name,
+                              );
+                              if (med) counts[med.id] = m.actual;
+                            });
+                            history.extra.forEach((e) => {
+                              const med = data.medications.find(
+                                (med) => med.name === e.name,
+                              );
+                              if (med) counts[med.id] = e.actual;
+                            });
+                            setRecognizedCounts(counts);
+                          }}
+                          style={{ marginTop: "8px" }}
+                        >
+                          この条件で再判定
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
           )}
         </section>
       </main>

@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# お薬飲み忘れツール
 
-## Getting Started
+複数人の服薬予定を管理し、カメラで薬を自動判定するPWAアプリ。
 
-First, run the development server:
+## 機能
+
+### ✅ 100% 完成版
+
+- **ユーザー管理**: 最大5人までのプロファイル管理
+- **薬登録**: 薬名、説明、表面・裏面画像の登録
+- **スケジュール管理**: 時間帯（朝/昼/夜/就寝前/毎食後）ごとの服薬予定設定
+- **画像判定**: TensorFlow.jsによるオンデバイス画像認識
+- **編集・削除**: 薬、ユーザー、スケジュールの編集・削除機能
+- **判定履歴**: 直近24時間の判定履歴を保存・表示
+- **PWA対応**: iPhoneでホーム画面に追加可能
+
+## 技術スタック
+
+- **フレームワーク**: Next.js 16.0
+- **言語**: TypeScript
+- **画像認識**: TensorFlow.js (オンデバイス推論)
+- **データ保存**: LocalStorage
+- **PWA**: Service Worker + Manifest
+
+## セットアップ
 
 ```bash
+# 依存関係のインストール
+npm install
+
+# 開発サーバー起動
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# ビルド
+npm run build
+
+# 本番サーバー起動
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 使用方法
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **薬の登録**
+   - 「データ登録フォーム」セクションで薬を登録
+   - 表面・裏面の画像をアップロード（画像認識の精度向上に重要）
+   - 薬名、説明、特徴を入力
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **ユーザー登録**
+   - 最大5人まで登録可能
+   - 名前、メモ、カラーを設定
 
-## Learn More
+3. **スケジュール設定**
+   - ユーザーと時間帯を選択
+   - 薬と個数を設定
 
-To learn more about Next.js, take a look at the following resources:
+4. **カメラ判定**
+   - カメラを起動
+   - 机に並べた薬を撮影
+   - 「カメラで撮影して自動判定」ボタンをクリック
+   - 自動で薬を認識し、過不足を判定
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **判定履歴**
+   - 過去の判定結果を確認
+   - 同じ条件で再判定可能
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## PWAとしてインストール
 
-## Deploy on Vercel
+### iPhone (Safari)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Safariでアプリを開く
+2. 共有ボタン（□↑）をタップ
+3. 「ホーム画面に追加」を選択
+4. ホーム画面から起動可能
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Android (Chrome)
+
+1. Chromeでアプリを開く
+2. メニューから「ホーム画面に追加」を選択
+3. ホーム画面から起動可能
+
+## 画像認識について
+
+- TensorFlow.jsを使用したオンデバイス推論
+- 登録画像と撮影画像の特徴を比較
+- 類似度が70%以上で薬を認識
+- 精度向上のため、登録時は背景を統一し、明るい場所で撮影することを推奨
+
+## データ保存
+
+- すべてのデータはブラウザのLocalStorageに保存
+- 他のブラウザや端末とは独立したデータとして扱われます
+- データのバックアップは手動で行ってください
+
+## ライセンス
+
+MIT

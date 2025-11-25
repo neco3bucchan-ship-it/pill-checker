@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   initialData,
   timeSlots,
+  type AnalysisHistory,
   type AppData,
   type Medication,
   type ScheduleItem,
@@ -110,6 +111,91 @@ export const useAppData = () => {
     [],
   );
 
+  const updateMedication = useCallback((id: string, input: Partial<Medication>) => {
+    setData((prev) => ({
+      ...prev,
+      medications: prev.medications.map((med) =>
+        med.id === id ? { ...med, ...input } : med,
+      ),
+    }));
+  }, []);
+
+  const deleteMedication = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      medications: prev.medications.filter((med) => med.id !== id),
+      userProfiles: prev.userProfiles.map((user) => ({
+        ...user,
+        routines: Object.fromEntries(
+          Object.entries(user.routines).map(([slot, items]) => [
+            slot,
+            items.filter((item) => item.medicationId !== id),
+          ]),
+        ) as UserProfile["routines"],
+      })),
+    }));
+  }, []);
+
+  const updateUser = useCallback(
+    (id: string, input: Partial<UserProfile>) => {
+      setData((prev) => ({
+        ...prev,
+        userProfiles: prev.userProfiles.map((user) =>
+          user.id === id ? { ...user, ...input } : user,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const deleteUser = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      userProfiles: prev.userProfiles.filter((user) => user.id !== id),
+    }));
+  }, []);
+
+  const deleteScheduleItem = useCallback(
+    (payload: { userId: string; slot: TimeSlot; medicationId: string }) => {
+      setData((prev) => ({
+        ...prev,
+        userProfiles: prev.userProfiles.map((user) => {
+          if (user.id !== payload.userId) return user;
+          const existing = user.routines[payload.slot] ?? [];
+          return {
+            ...user,
+            routines: {
+              ...user.routines,
+              [payload.slot]: existing.filter(
+                (item) => item.medicationId !== payload.medicationId,
+              ),
+            },
+          };
+        }),
+      }));
+    },
+    [],
+  );
+
+  const addAnalysisHistory = useCallback((history: Omit<AnalysisHistory, "id">) => {
+    const newHistory: AnalysisHistory = {
+      ...history,
+      id: crypto.randomUUID(),
+    };
+    setData((prev) => ({
+      ...prev,
+      analysisHistory: [newHistory, ...prev.analysisHistory].slice(0, 50), // 最新50件まで保持
+    }));
+    // 24時間以上古い履歴を削除
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    setData((prev) => ({
+      ...prev,
+      analysisHistory: prev.analysisHistory.filter(
+        (h) => new Date(h.timestamp).getTime() > oneDayAgo,
+      ),
+    }));
+  }, []);
+
   const resetData = useCallback(() => {
     setData(initialData);
     if (typeof window !== "undefined") {
@@ -120,8 +206,14 @@ export const useAppData = () => {
   return {
     data,
     addMedication,
+    updateMedication,
+    deleteMedication,
     addUser,
+    updateUser,
+    deleteUser,
     addScheduleItem,
+    deleteScheduleItem,
+    addAnalysisHistory,
     resetData,
   };
 };
