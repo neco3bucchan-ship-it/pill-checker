@@ -39,8 +39,8 @@ const detectEdges = (gray: tf.Tensor2D): tf.Tensor2D => {
     const edgesY = tf.conv2d(grayExpanded, kernelY, 1, "same").squeeze([0, 3]);
     
     const edges = edgesX.square().add(edgesY.square()).sqrt();
-    return edges;
-  });
+    return edges as tf.Tensor2D;
+  }) as tf.Tensor2D;
 };
 
 // テクスチャ特徴（LBP風：Local Binary Pattern）
@@ -73,8 +73,10 @@ const extractTextureFeatures = (gray: tf.Tensor2D): tf.Tensor1D => {
     
     const total = bins.reduce((a, b) => a + b, 0);
     return tf.tensor1d(bins.map(b => total > 0 ? b / total : 0));
-  });
+  }) as tf.Tensor1D;
 };
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+read_file
 
 // 色空間特徴（HSV変換風）
 const extractColorFeatures = (tensor: tf.Tensor3D): tf.Tensor1D => {
@@ -117,7 +119,7 @@ const extractColorFeatures = (tensor: tf.Tensor3D): tf.Tensor1D => {
     const valMean = value.mean([0, 1]);
     
     return tf.concat([hueMean, hueStd, satMean, valMean], 0);
-  });
+  }) as tf.Tensor1D;
 };
 
 // 画像の特徴ベクトルを抽出（改良版：より高度な特徴抽出）
