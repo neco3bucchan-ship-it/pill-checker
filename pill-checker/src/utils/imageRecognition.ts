@@ -140,7 +140,7 @@ export const extractImageFeatures = async (
           const std = tensor.sub(meanExpanded).square().mean([0, 1]).sqrt();
           
           // 2. グレースケール特徴
-          const gray = tensor.mean(2);
+          const gray = tensor.mean(2) as tf.Tensor2D;
           const grayMean = gray.mean([0, 1]);
           const grayStd = gray.sub(grayMean).square().mean([0, 1]).sqrt();
           
