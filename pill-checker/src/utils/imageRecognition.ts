@@ -31,12 +31,13 @@ const detectEdges = (gray: tf.Tensor2D): tf.Tensor2D => {
     const sobelX = tf.tensor2d([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], [3, 3]);
     const sobelY = tf.tensor2d([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], [3, 3]);
     
-    const grayExpanded = gray.expandDims(2).expandDims(0);
-    const kernelX = sobelX.expandDims(2).expandDims(3);
-    const kernelY = sobelY.expandDims(2).expandDims(3);
+    // 型アサーションを追加してTensor4Dとして明示
+    const grayExpanded = gray.expandDims(2).expandDims(0) as tf.Tensor4D;
+    const kernelX = sobelX.expandDims(2).expandDims(3) as tf.Tensor4D;
+    const kernelY = sobelY.expandDims(2).expandDims(3) as tf.Tensor4D;
     
-    const edgesX = tf.conv2d(grayExpanded, kernelX, 1, "same").squeeze([0, 3]);
-    const edgesY = tf.conv2d(grayExpanded, kernelY, 1, "same").squeeze([0, 3]);
+    const edgesX = tf.conv2d(grayExpanded, kernelX, 1, "same").squeeze([0, 3]) as tf.Tensor2D;
+    const edgesY = tf.conv2d(grayExpanded, kernelY, 1, "same").squeeze([0, 3]) as tf.Tensor2D;
     
     const edges = edgesX.square().add(edgesY.square()).sqrt();
     return edges as tf.Tensor2D;
