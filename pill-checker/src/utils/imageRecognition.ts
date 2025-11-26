@@ -75,8 +75,6 @@ const extractTextureFeatures = (gray: tf.Tensor2D): tf.Tensor1D => {
     return tf.tensor1d(bins.map(b => total > 0 ? b / total : 0));
   }) as tf.Tensor1D;
 };
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-read_file
 
 // 色空間特徴（HSV変換風）
 const extractColorFeatures = (tensor: tf.Tensor3D): tf.Tensor1D => {
