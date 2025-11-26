@@ -225,7 +225,7 @@ export const recognizeMedications = async (
     surfaceImage?: string;
     backImage?: string;
   }>,
-  threshold: number = 0.5, // 類似度の閾値（0.7から0.5に下げて認識率向上）
+  threshold: number = 0.8, // 類似度の閾値（高めに設定して誤検出を減らす）
 ): Promise<RecognitionResult[]> => {
   try {
     await tf.ready();
@@ -258,21 +258,16 @@ export const recognizeMedications = async (
         maxSimilarity = Math.max(maxSimilarity, similarity);
       }
       
-      // 複数の閾値で試行（より柔軟な認識）
-      const thresholds = [threshold, threshold * 0.9, threshold * 0.8];
-      const bestThreshold = thresholds.find(t => maxSimilarity >= t) || threshold;
-      
-      if (maxSimilarity >= bestThreshold) {
-        // 類似度に基づいて個数を推定（改良版）
-        // 0.5-0.6: 1個、0.6-0.7: 1-2個、0.7-0.8: 2個、0.8以上: 2-3個
-        let estimatedCount = 1;
-        if (maxSimilarity >= 0.8) {
-          estimatedCount = Math.min(3, Math.round(maxSimilarity * 2.5));
-        } else if (maxSimilarity >= 0.7) {
-          estimatedCount = 2;
-        } else if (maxSimilarity >= 0.6) {
-          estimatedCount = Math.round(maxSimilarity * 1.5);
-        }
+      // 高めの閾値とマージンを用意し、誤検出を抑制
+      const strictThreshold = Math.max(0.75, threshold);
+      const confidenceMargin = 0.05;
+      if (maxSimilarity >= strictThreshold + confidenceMargin) {
+        // 類似度に基づいて個数を推定（閾値との差分でスケーリング）
+        const normalized = Math.min(
+          1,
+          (maxSimilarity - strictThreshold) / (1 - strictThreshold),
+        );
+        const estimatedCount = Math.max(1, Math.min(3, Math.round(normalized * 3)));
         
         results.push({
           medicationId: med.id,
