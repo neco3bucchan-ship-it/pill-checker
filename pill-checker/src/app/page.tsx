@@ -92,6 +92,7 @@ export default function Home() {
     count: 1,
   });
   const [recognizedCounts, setRecognizedCounts] = useState<Record<string, number>>({});
+  const [recognitionConfidences, setRecognitionConfidences] = useState<Record<string, number>>({});
   const [extraInput, setExtraInput] = useState({ label: "", count: 0 });
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [cameraStatus, setCameraStatus] = useState<"idle" | "ready" | "error">("idle");
@@ -330,10 +331,33 @@ export default function Home() {
         newCounts[item.medicationId] = 0;
       });
       // 認識結果で上書き
+      const newConfidences: Record<string, number> = {};
       recognitionResults.forEach((result) => {
         newCounts[result.medicationId] = result.count;
+        newConfidences[result.medicationId] = result.confidence;
       });
       setRecognizedCounts(newCounts);
+      setRecognitionConfidences(newConfidences);
+      
+      // デバッグ情報をコンソールに出力
+      console.log("画像認識結果:", recognitionResults);
+      if (recognitionResults.length === 0) {
+        const registeredCount = data.medications.filter((med) => med.surfaceImage || med.backImage).length;
+        console.warn("薬が認識されませんでした。以下を確認してください：");
+        console.warn(`1. 薬が登録されているか（現在${registeredCount}個の薬に画像が登録されています）`);
+        console.warn("2. 撮影環境が明るいか（明るい場所で撮影してください）");
+        console.warn("3. 薬がはっきりと写っているか（カメラに近づきすぎず、遠すぎず）");
+        console.warn("4. 背景がシンプルか（白い紙やシンプルな背景が推奨）");
+        
+        // ユーザーに通知
+        if (registeredCount === 0) {
+          alert("薬が認識されませんでした。\n\nまず、薬の登録画面で表面・裏面の画像を登録してください。");
+        } else {
+          alert(`薬が認識されませんでした。\n\n以下の点を確認してください：\n・明るい場所で撮影\n・薬がはっきりと写っている\n・背景がシンプル\n\n現在${registeredCount}個の薬が登録されています。`);
+        }
+      } else {
+        console.log(`✅ ${recognitionResults.length}個の薬を認識しました`);
+      }
       
       // 分析を実行（最新の個数で）
       handleAnalyzeWithCounts(newCounts);
@@ -951,11 +975,21 @@ export default function Home() {
                     const med = getMedicationById(item.medicationId, data.medications);
                     if (!med) return null;
                     const value = recognizedCounts[item.medicationId] ?? 0;
+                    const confidence = recognitionConfidences[item.medicationId];
                     return (
                       <li key={`detected-${med.id}`} className={styles.recognitionRow}>
                         <div>
                           <p className={styles.medName}>{med.name}</p>
                           <small>予定: {item.count}個</small>
+                          {confidence !== undefined && (
+                            <small style={{ 
+                              color: confidence >= 0.7 ? "#22c55e" : confidence >= 0.5 ? "#f59e0b" : "#ef4444",
+                              display: "block",
+                              marginTop: "4px"
+                            }}>
+                              認識信頼度: {Math.round(confidence * 100)}%
+                            </small>
+                          )}
                         </div>
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                           <input
