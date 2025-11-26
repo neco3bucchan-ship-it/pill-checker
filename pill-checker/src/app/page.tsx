@@ -323,14 +323,20 @@ export default function Home() {
       );
       
       // 認識結果をrecognizedCountsに反映
+      // スケジュールに登録されている薬の個数を初期化（認識されなかったものは0に）
       const newCounts: Record<string, number> = {};
+      scheduleItems.forEach((item) => {
+        // まず0に初期化
+        newCounts[item.medicationId] = 0;
+      });
+      // 認識結果で上書き
       recognitionResults.forEach((result) => {
         newCounts[result.medicationId] = result.count;
       });
       setRecognizedCounts(newCounts);
       
-      // 分析を実行
-      handleAnalyze();
+      // 分析を実行（最新の個数で）
+      handleAnalyzeWithCounts(newCounts);
     } catch (error) {
       console.error("画像認識エラー:", error);
       alert("画像認識中にエラーが発生しました。手動で個数を入力してください。");
@@ -339,7 +345,8 @@ export default function Home() {
     }
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyzeWithCounts = (counts?: Record<string, number>) => {
+    const countsToUse = counts ?? recognizedCounts;
     const missing: DiffEntry[] = [];
     const extra: DiffEntry[] = [];
     const unknown: UnknownEntry[] = [];
@@ -347,7 +354,7 @@ export default function Home() {
     scheduleItems.forEach((item) => {
       const med = getMedicationById(item.medicationId, data.medications);
       if (!med) return;
-      const actual = recognizedCounts[item.medicationId] ?? 0;
+      const actual = countsToUse[item.medicationId] ?? 0;
       if (actual < item.count) {
         missing.push({ name: med.name, expected: item.count, actual });
       } else if (actual > item.count) {
@@ -355,7 +362,7 @@ export default function Home() {
       }
     });
 
-    Object.entries(recognizedCounts).forEach(([medId, count]) => {
+    Object.entries(countsToUse).forEach(([medId, count]) => {
       if (count <= 0) return;
       const isScheduled = scheduleItems.some(
         (item) => item.medicationId === medId,
@@ -393,6 +400,10 @@ export default function Home() {
         unknown,
       });
     }
+  };
+
+  const handleAnalyze = () => {
+    handleAnalyzeWithCounts();
   };
 
   const hasIssues =
@@ -910,7 +921,23 @@ export default function Home() {
 
           <div className={styles.recognitionGrid}>
             <div>
-              <h3>検出した個数（シミュレーション）</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <h3 style={{ margin: 0 }}>検出した個数（シミュレーション）</h3>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    const resetCounts: Record<string, number> = {};
+                    scheduleItems.forEach((item) => {
+                      resetCounts[item.medicationId] = 0;
+                    });
+                    setRecognizedCounts(resetCounts);
+                  }}
+                  style={{ fontSize: "12px", padding: "4px 8px" }}
+                >
+                  全て0にリセット
+                </button>
+              </div>
               <p className={styles.sectionHint}>
                 机に並べた薬を撮影したと想定して、読み取れた個数を入力してください。
               </p>
@@ -923,23 +950,35 @@ export default function Home() {
                   {scheduleItems.map((item) => {
                     const med = getMedicationById(item.medicationId, data.medications);
                     if (!med) return null;
-                    const value = recognizedCounts[item.medicationId] ?? item.count;
+                    const value = recognizedCounts[item.medicationId] ?? 0;
                     return (
                       <li key={`detected-${med.id}`} className={styles.recognitionRow}>
                         <div>
                           <p className={styles.medName}>{med.name}</p>
                           <small>予定: {item.count}個</small>
                         </div>
-                        <input
-                          type="number"
-                          min={0}
-                          max={20}
-                          value={value}
-                          className={styles.input}
-                          onChange={(e) =>
-                            updateRecognizedCount(med.id, Number(e.target.value))
-                          }
-                        />
+                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={value}
+                            className={styles.input}
+                            onChange={(e) =>
+                              updateRecognizedCount(med.id, Number(e.target.value))
+                            }
+                            style={{ width: "60px" }}
+                          />
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => updateRecognizedCount(med.id, 0)}
+                            style={{ fontSize: "12px", padding: "4px 8px", whiteSpace: "nowrap" }}
+                            title="0にリセット"
+                          >
+                            0
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
