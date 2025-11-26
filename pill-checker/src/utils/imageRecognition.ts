@@ -166,12 +166,18 @@ export const extractImageFeatures = async (
           
           // すべての特徴を結合
           const hist = tf.concat(histFeatures, 0);
+          const grayStats = tf.stack([grayMean, grayStd]).asType("float32").reshape([2]);
+          const edgeStats = tf
+            .stack([edgeStrength, edgeDensity])
+            .asType("float32")
+            .reshape([2]);
+          
           const combined = tf.concat([
             mean,           // 3次元（RGB平均）
             std,            // 3次元（RGB標準偏差）
-            tf.tensor1d([grayMean, grayStd]), // 2次元（グレースケール統計）
+            grayStats,      // 2次元（グレースケール統計）
             hist,           // 16次元（ヒストグラム）
-            tf.tensor1d([edgeStrength, edgeDensity]), // 2次元（エッジ特徴）
+            edgeStats,      // 2次元（エッジ特徴）
             texture,        // 16次元（テクスチャ）
             colorFeatures,  // 4次元（色空間）
           ], 0);
